@@ -10,6 +10,8 @@
     #define QUAD_A 15
     #define QUAD_B 16
     #define RELEASE 6
+    #define ENGAGE_BTN 7
+    #define ARMS_CLOSED 8
     #define STATUS_LED 5
 #endif
 
@@ -19,9 +21,20 @@ enum State
 {
     IDLE,
     SPIN_UP,
-    LAUNCH,
     READY,
-    SPIN_DOWN
+    LAUNCH,
+    SPIN_DOWN,
+    ABORT
+};
+
+enum CMD
+{
+    _cmd_start_spin,
+    _cmd_ready,
+    _cmd_not_ready,
+    _cmd_release,
+    _cmd_abort,
+    _cmd_error
 };
 
 
@@ -32,11 +45,29 @@ void UpdateQuad();  // ISR to update the value of quadAngle
 class Controller
 {
 private:
+
+    // these values are arbitrary for now
+    const int launchAngle = 135;
+    const int launchAngleTolerance = 5;
+    const int maxSpeed = 3600;
+    const int launchSpeedTolerance = 20;
+    const int idleSpeedTolerance = 5;
+
+
     State state;
 
     int quadAngle = 0;  // Angle initializes to 0; gravity pulls arm down.
+    int rotationalSpeed = 0;
+    int lastQuadAngle;
+    uint32_t lastTime;
+
+    int motorTargetSpeed;
+    
+    bool payloadLatched = false;
 
 
+    void ActuateLatch();
+    void MotorSpeedController();
     
 public:
     int Init();
