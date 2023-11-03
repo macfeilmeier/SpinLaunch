@@ -31,7 +31,8 @@ void Controller::Loop()
     // Copy quadAngle from volitle to non-volitile.
     lastQuadAngle = quadAngle;
     quadAngle = quadAngle_volitile;
-    rotationalSpeed = (quadAngle - lastQuadAngle) / (millis() - lastTime);  // Calculate rotational speed (ticks per millisec)
+    deltaTime = millis() - lastTime;
+    rotationalSpeed = (quadAngle - lastQuadAngle) / deltaTime;  // Calculate rotational speed (ticks per millisec)
 
 
     char buf[1];
@@ -62,6 +63,7 @@ void Controller::Loop()
 
         if(cmd == _cmd_start_spin)
         {
+            accumulatedError = 0;   // Reset accumulated error
             if(payloadLatched == true)   
                 state = SPIN_UP;
             else
@@ -107,6 +109,7 @@ void Controller::Loop()
         if(abs(quadAngle - launchAngle) < launchAngleTolerance)
         {
             ActuateLatch();
+            state = SPIN_DOWN;
         }
 
         break;
@@ -135,6 +138,13 @@ void Controller::MotorSpeedController()
     // Controller Logic for Motor PID
     //
     //...
+    int deltaAngle = (quadAngle - lastQuadAngle);
+    
+    accumulatedError += (motorTargetSpeed - quadAngle) / deltaTime;
+
+
+    int motorCommand = P * (motorTargetSpeed - quadAngle) + I * accumulatedError + D * deltaAngle;
+
 }
 void Controller::ActuateLatch()
 {

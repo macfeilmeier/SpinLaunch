@@ -53,6 +53,11 @@ private:
     const int launchSpeedTolerance = 20;
     const int idleSpeedTolerance = 5;
 
+    // PID tuning parameters
+    const float P = 0.5;
+    const float I = 0.01;
+    const float D = 0.2;
+
 
     State state;
 
@@ -60,8 +65,10 @@ private:
     int rotationalSpeed = 0;
     int lastQuadAngle;
     uint32_t lastTime;
+    uint32_t deltaTime;
+    uint32_t accumulatedError = 0;
 
-    int motorTargetSpeed;
+    int motorTargetSpeed = 0;
     
     bool payloadLatched = false;
 
