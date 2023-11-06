@@ -15,6 +15,7 @@ int Controller::Init()
     pinMode(QUAD_A, INPUT_PULLUP);
     pinMode(QUAD_B, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(QUAD_A), UpdateQuad, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(QUAD_B), UpdateQuad, CHANGE);
 
     if(digitalReadFast(ARMS_CLOSED))
     {
@@ -165,6 +166,14 @@ void UpdateQuad()
         quadAngle_volitile--;
         } else if (quadlastState == 0b10 && newState == 0b00) {
         quadAngle_volitile++;
+        }
+        if(quadAngle_volitile > PULSE_PER_ROTATION)
+        {
+            quadAngle_volitile = 0;
+        }
+        else if(quadAngle_volitile < 0)
+        {
+            quadAngle_volitile = PULSE_PER_ROTATION;
         }
         quadlastState = newState;
     }
