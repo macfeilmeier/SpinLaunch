@@ -5,6 +5,10 @@ int lastState = 0;
 volatile int encoderCount = 0;
 int lastEncoderCount = 0;
 void handleEncoder();
+int lastState = 0;
+volatile int encoderCount = 0;
+int lastEncoderCount = 0;
+void handleEncoder();
 void setup() {
   Serial.begin(115200);
   pinMode(QUAD_A,INPUT_PULLUP);
