@@ -147,12 +147,9 @@ void Controller::MotorSpeedController()
     int motorCommand = P * (motorTargetSpeed - quadAngle) + I * accumulatedError + D * deltaAngle;
 
     // map motor command to PWM duty cycle.
-    float map = P * 256 / PULSE_PER_ROTATION * accelerationFactor;
+    int map = motorCommand * 256.0 / PULSE_PER_ROTATION * accelerationFactor;
     // bound input
-    if(map > 255) 
-        map = 255;
-    else if(map < 0)
-        map = 0;
+    map %= 256;
 
     // write pwm.    
     analogWrite(MOTOR_CTRL, P);
