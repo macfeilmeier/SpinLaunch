@@ -11,17 +11,18 @@ int Controller::Init()
     
     pinMode(ENGAGE_BTN, INPUT);
     pinMode(ARMS_CLOSED, INPUT);
-    attachInterrupt(digitalPinToInterrupt(ARMS_CLOSED), UpdateQuad, CHANGE);
+    //attachInterrupt(digitalPinToInterrupt(ARMS_CLOSED), UpdateQuad, CHANGE);
 
     //  Set up Quad pins and interupt
     pinMode(QUAD_A, INPUT_PULLUP);
     pinMode(QUAD_B, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(QUAD_A), UpdateQuad, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(QUAD_B), UpdateQuad, CHANGE);
 
-    if(digitalReadFast(ARMS_CLOSED))
-    {
-        payloadLatched = true;
-    }
+    // if(digitalReadFast(ARMS_CLOSED))
+    // {
+    //     payloadLatched = true;
+    // }
 
     lastTime = micros();
     
@@ -68,10 +69,11 @@ void Controller::Loop()
         if(cmd == _cmd_start_spin)
         {
             accumulatedError = 0;   // Reset accumulated error
-            if(payloadLatched == true)   
-                state = SPIN_UP;
-            else
-                Serial4.write(_cmd_error);
+            // if(payloadLatched == true)   
+            //     state = SPIN_UP;
+            // else
+            //     Serial4.write(_cmd_error);
+            state = SPIN_UP;
         }
         
         break;
@@ -135,6 +137,8 @@ void Controller::Loop()
     default:
         break;
     }
+
+    LogData();
 }
 
 void Controller::MotorSpeedController()
@@ -150,6 +154,8 @@ void Controller::MotorSpeedController()
     int map = motorCommand * 256.0 / PULSE_PER_ROTATION * accelerationFactor;
     // bound input
     map %= 256;
+    if(map > lastDutyCycle + maxAcceleration)
+        map = lastDutyCycle + maxAcceleration;
 
     // write pwm.    
     analogWrite(MOTOR_CTRL, P);
@@ -178,4 +184,16 @@ void UpdateQuad()
         quadAngle_volitile %= PULSE_PER_ROTATION;
         quadlastState = newState;
     }
+}
+
+void Controller::LogData()
+{
+    Serial.print((unsigned char)_cmd_data);
+    Serial.print('\t');
+    Serial.print(state);
+    Serial.print('\t');
+    Serial.print(quadAngle);
+    Serial.print('\t');
+    Serial.print(rotationalSpeed);
+    Serial.println();
 }

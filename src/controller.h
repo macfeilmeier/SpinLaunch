@@ -34,7 +34,8 @@ enum CMD
     _cmd_not_ready,
     _cmd_release,
     _cmd_abort,
-    _cmd_error
+    _cmd_error,
+    _cmd_data,
 };
 
 
@@ -53,6 +54,7 @@ private:
     const int launchSpeedTolerance = 20;
     const int idleSpeedTolerance = 5;
     const int accelerationFactor = 1;
+    const int maxAcceleration = 1;
 
     // PID tuning parameters
     const float P = 0.5;
@@ -69,6 +71,7 @@ private:
     uint32_t deltaTime;
     int deltaAngle = 0;
     int accumulatedError = 0;
+    int lastDutyCycle = 0;
 
     int motorTargetSpeed = 0;
     
@@ -83,6 +86,7 @@ public:
     void Loop();
 
     State GetState(){return state;}
+    void LogData();
 
 };
 
