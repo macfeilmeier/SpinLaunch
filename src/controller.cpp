@@ -25,6 +25,7 @@ int Controller::Init()
     // }
 
     lastTime = micros();
+    lastMessage = 0;
     
     return 0;
 }
@@ -34,11 +35,14 @@ void Controller::Loop()
     // Copy quadAngle from volitle to non-volitile.
     lastQuadAngle = quadAngle;
     quadAngle = quadAngle_volitile;
-    deltaTime = millis() - lastTime;
+    deltaTime = micros() - lastTime;
+    lastTime = micros();
 
     // Account for the angle resetting to 0 after reaching PUSLE_PER_ROTATION
-    deltaAngle = (quadAngle > lastQuadAngle) ? (quadAngle - lastQuadAngle) : (quadAngle + PULSE_PER_ROTATION -lastQuadAngle);
-    rotationalSpeed = deltaAngle / deltaTime;  // Calculate rotational speed (ticks per millisec)
+    //deltaAngle = (quadAngle > lastQuadAngle) ? (quadAngle - lastQuadAngle) : (quadAngle + PULSE_PER_ROTATION - lastQuadAngle);
+
+    deltaAngle = quadAngle - lastQuadAngle;
+    rotationalSpeed = (float)deltaAngle / deltaTime;  // Calculate rotational speed (ticks per microsec)
 
     char buf[1];
     uint8_t cmd = 255;
@@ -138,7 +142,11 @@ void Controller::Loop()
         break;
     }
 
-    LogData();
+    if(millis() > lastMessage + messageFrequency)
+    {
+        LogData();
+        lastMessage = millis();
+    }
 }
 
 void Controller::MotorSpeedController()
@@ -146,9 +154,9 @@ void Controller::MotorSpeedController()
     // Controller Logic for Motor PID
     //
     //...    
-    accumulatedError += (motorTargetSpeed - quadAngle) / deltaTime;
+    accumulatedError += (motorTargetSpeed - rotationalSpeed) / deltaTime;
 
-    int motorCommand = P * (motorTargetSpeed - quadAngle) + I * accumulatedError + D * deltaAngle;
+    int motorCommand = P * (motorTargetSpeed - rotationalSpeed) + I * accumulatedError + D * deltaAngle;
 
     // map motor command to PWM duty cycle.
     int map = motorCommand * 256.0 / PULSE_PER_ROTATION * accelerationFactor;
@@ -181,19 +189,19 @@ void UpdateQuad()
         } else if (quadlastState == 0b10 && newState == 0b00) {
         quadAngle_volitile++;
         }
-        quadAngle_volitile %= PULSE_PER_ROTATION;
+        //quadAngle_volitile %= PULSE_PER_ROTATION;
         quadlastState = newState;
     }
 }
 
 void Controller::LogData()
 {
-    Serial.print((unsigned char)_cmd_data);
-    Serial.print('\t');
-    Serial.print(state);
-    Serial.print('\t');
-    Serial.print(quadAngle);
-    Serial.print('\t');
-    Serial.print(rotationalSpeed);
-    Serial.println();
+    Serial4.print((unsigned char)_cmd_data);
+    Serial4.print('\t');
+    Serial4.print(state);
+    Serial4.print('\t');
+    Serial4.print(quadAngle);
+    Serial4.print('\t');
+    Serial4.print(deltaAngle);
+    Serial4.println();
 }

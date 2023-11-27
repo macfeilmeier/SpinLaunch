@@ -55,6 +55,7 @@ private:
     const int idleSpeedTolerance = 5;
     const int accelerationFactor = 1;
     const int maxAcceleration = 1;
+    const int messageFrequency = 100; // Millisecs
 
     // PID tuning parameters
     const float P = 0.5;
@@ -65,10 +66,11 @@ private:
     State state;
 
     int quadAngle = 0;  // Angle initializes to 0; gravity pulls arm down.
-    int rotationalSpeed = 0;
+    float rotationalSpeed = 0;
     int lastQuadAngle;
     uint32_t lastTime;
     uint32_t deltaTime;
+    uint32_t lastMessage;
     int deltaAngle = 0;
     int accumulatedError = 0;
     int lastDutyCycle = 0;

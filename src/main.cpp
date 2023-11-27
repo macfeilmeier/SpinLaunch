@@ -21,6 +21,8 @@ void setup() {
 
 void loop() {
   ctrl.Loop();
+  delay(100);
+  //Serial4.println("Blah");
   // Serial.print(digitalRead(QUAD_A));
   // Serial.print("\t");
   // Serial.println(digitalRead(QUAD_B));
