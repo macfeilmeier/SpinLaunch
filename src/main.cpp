@@ -6,6 +6,18 @@ volatile int encoderCount = 0;
 int lastEncoderCount = 0;
 //void handleEncoder();
 Controller ctrl;
+IntervalTimer telemeryTimer;
+//IntervalTimer speedTimer;
+
+void SendTelemetry()
+{
+    ctrl.LogData();
+}
+// void UpdateSpeed()
+// {
+//   ctrl.UpdateSpeed();
+// }
+
 void setup() {
   Serial.begin(115200);
   ctrl.Init();
@@ -15,8 +27,11 @@ void setup() {
 
   // attachInterrupt(digitalPinToInterrupt(QUAD_A), handleEncoder, CHANGE);
   // attachInterrupt(digitalPinToInterrupt(QUAD_B), handleEncoder, CHANGE);
-
   
+  telemeryTimer.priority(128);
+  telemeryTimer.begin(SendTelemetry, 100000);
+  // speedTimer.priority(64);
+  // speedTimer.begin(UpdateSpeed, 1000);
 }
 
 void loop() {

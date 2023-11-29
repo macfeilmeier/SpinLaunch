@@ -9,8 +9,8 @@ int Controller::Init()
 
     pinMode(STATUS_LED, OUTPUT);
     
-    pinMode(ENGAGE_BTN, INPUT);
-    pinMode(ARMS_CLOSED, INPUT);
+    //pinMode(ENGAGE_BTN, INPUT);
+    //pinMode(ARMS_CLOSED, INPUT);
     //attachInterrupt(digitalPinToInterrupt(ARMS_CLOSED), UpdateQuad, CHANGE);
 
     //  Set up Quad pins and interupt
@@ -24,6 +24,8 @@ int Controller::Init()
     //     payloadLatched = true;
     // }
 
+    digitalWrite(MOTOR_CTRL, LOW);
+
     lastTime = micros();
     lastMessage = 0;
     
@@ -33,8 +35,10 @@ int Controller::Init()
 void Controller::Loop()
 {
     // Copy quadAngle from volitle to non-volitile.
+    uint32_t pulseDeltaTime = pulseDeltaTime_volatile;
+    rotationalSpeed = ((float)1000000 / PULSE_PER_ROTATION) / pulseDeltaTime; // (1000000 / 12000) / pulseDeltaTime
     lastQuadAngle = quadAngle;
-    quadAngle = quadAngle_volitile;
+    quadAngle = quadAngle_volatile;
     deltaTime = micros() - lastTime;
     lastTime = micros();
 
@@ -64,15 +68,16 @@ void Controller::Loop()
         motorTargetSpeed = 0;           // Set Motor Speed to 0, in case its not.
 
         //  Check if user btn for latch is pressed 
-        if(digitalRead(ENGAGE_BTN))
-        {
-            ActuateLatch(0);
-        }
-        payloadLatched = digitalRead(ARMS_CLOSED);  // check if payload arms are closed
+        // if(digitalRead(ENGAGE_BTN))
+        // {
+        //     ActuateLatch(0);
+        // }
+        //payloadLatched = digitalRead(ARMS_CLOSED);  // check if payload arms are closed
 
         if(cmd == _cmd_start_spin)
         {
             accumulatedError = 0;   // Reset accumulated error
+            motorTargetSpeed = maxDeltaAngle;
             // if(payloadLatched == true)   
             //     state = SPIN_UP;
             // else
@@ -82,16 +87,18 @@ void Controller::Loop()
         
         break;
     case SPIN_UP:
-        if(!digitalRead(ARMS_CLOSED))   
-        {   // Potential Failure of Latch
-            state = ABORT;
-            return;
-        }
+        // if(!digitalRead(ARMS_CLOSED))   
+        // {   // Potential Failure of Latch
+        //     state = ABORT;
+        //     return;
+        // }
 
         MotorSpeedController();
-        if(quadAngle >= maxSpeed)
+        if(rotationalSpeed >= maxDeltaAngle)
         {
-            Serial4.write(_cmd_ready);// Let computer know that spinup is completed.
+            Serial4.print(_cmd_cmd);
+            Serial4.print('\t');
+            Serial4.println(_cmd_ready);// Let computer know that spinup is completed.
             state = READY;
         }
 
@@ -102,7 +109,7 @@ void Controller::Loop()
         MotorSpeedController();
 
         // check is speed is not within specs.
-        if(rotationalSpeed < (maxSpeed - launchSpeedTolerance))
+        if(deltaAngle < (maxDeltaAngle - launchSpeedTolerance))
         {
             Serial4.write(_cmd_not_ready);// Let computer know that launch is no longer available
             state = READY;
@@ -115,11 +122,18 @@ void Controller::Loop()
         }
 
         break;
-    case LAUNCH:
+    case LAUNCH:    
+        MotorSpeedController();
         if(abs(quadAngle - launchAngle) < launchAngleTolerance)
         {
             ActuateLatch(0);
+            released1 = true;
+        }
+        if(released1 && (quadAngle - launchAngle + (PULSE_PER_ROTATION/2)) < launchAngleTolerance)
+        {
+            ActuateLatch(1);
             state = SPIN_DOWN;
+            motorTargetSpeed = 0;
         }
 
         break;
@@ -127,15 +141,16 @@ void Controller::Loop()
         // Reduce Speed (Regenerative Breaking?)
         MotorSpeedController();
         
-        if(abs(rotationalSpeed) < idleSpeedTolerance)
+        if(abs(deltaAngle) < idleSpeedTolerance)
         {
             state = IDLE;
         }
         break;
     case ABORT:
         Serial4.write(_cmd_abort);  // Let computer know that launch is not available.
-        state = SPIN_DOWN;
+        state = IDLE;
         motorTargetSpeed = 0;
+        digitalWrite(MOTOR_CTRL, LOW);
         break;
 
     default:
@@ -147,6 +162,7 @@ void Controller::Loop()
         LogData();
         lastMessage = millis();
     }
+    delayMicroseconds(200);
 }
 
 void Controller::MotorSpeedController()
@@ -154,19 +170,20 @@ void Controller::MotorSpeedController()
     // Controller Logic for Motor PID
     //
     //...    
-    accumulatedError += (motorTargetSpeed - rotationalSpeed) / deltaTime;
+    // accumulatedError += (motorTargetSpeed - rotationalSpeed) / deltaTime;
 
-    int motorCommand = P * (motorTargetSpeed - rotationalSpeed) + I * accumulatedError + D * deltaAngle;
+    // int motorCommand = P * (motorTargetSpeed - rotationalSpeed) + I * accumulatedError + D * deltaAngle;
 
-    // map motor command to PWM duty cycle.
-    int map = motorCommand * 256.0 / PULSE_PER_ROTATION * accelerationFactor;
-    // bound input
-    map %= 256;
-    if(map > lastDutyCycle + maxAcceleration)
-        map = lastDutyCycle + maxAcceleration;
+    // // map motor command to PWM duty cycle.
+    // int map = motorCommand * 256.0 / PULSE_PER_ROTATION * accelerationFactor;
+    // // bound input
+    // map %= 256;
+    // if(map > lastDutyCycle + maxAcceleration)
+    //     map = lastDutyCycle + maxAcceleration;
 
-    // write pwm.    
-    analogWrite(MOTOR_CTRL, P);
+    // // write pwm.    
+    // analogWrite(MOTOR_CTRL, P);
+    digitalWrite(MOTOR_CTRL, HIGH);
 }
 void Controller::ActuateLatch(int latchNum)
 {
@@ -180,15 +197,24 @@ void UpdateQuad()
 {
     int newState = digitalRead(QUAD_A) | (digitalRead(QUAD_B) << 1);
     if (newState != quadlastState) {
-        if (quadlastState == 0b00 && newState == 0b01) {
-        quadAngle_volitile++;
-        } else if (quadlastState == 0b01 && newState == 0b00) {
-        quadAngle_volitile--;
-        } else if (quadlastState == 0b00 && newState == 0b10) {
-        quadAngle_volitile--;
-        } else if (quadlastState == 0b10 && newState == 0b00) {
-        quadAngle_volitile++;
+        if (quadlastState == 0b00 && newState == 0b01) 
+        {
+            quadAngle_volatile--;
+        } 
+        else if (quadlastState == 0b01 && newState == 0b00) 
+        {
+            quadAngle_volatile++;
+        } 
+        else if (quadlastState == 0b00 && newState == 0b10) 
+        {
+            quadAngle_volatile++;
+        } 
+        else if (quadlastState == 0b10 && newState == 0b00) 
+        {
+            quadAngle_volatile--;
         }
+        pulseDeltaTime_volatile = micros() - lastPulseTime_volatile;
+        lastPulseTime_volatile = micros();
         //quadAngle_volitile %= PULSE_PER_ROTATION;
         quadlastState = newState;
     }
@@ -205,3 +231,8 @@ void Controller::LogData()
     Serial4.print(deltaAngle);
     Serial4.println();
 }
+
+// void Controller::UpdateSpeed()
+// {
+//     rotationalSpeed_volatile = 
+// }
