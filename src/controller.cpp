@@ -24,10 +24,15 @@ int Controller::Init()
     //     payloadLatched = true;
     // }
 
+    digitalWrite(RELEASE_0, HIGH);
+    digitalWrite(RELEASE_1, HIGH);
+
     digitalWrite(MOTOR_CTRL, LOW);
 
     lastTime = micros();
     lastMessage = 0;
+
+    released1 = false;
     
     return 0;
 }
@@ -78,6 +83,7 @@ void Controller::Loop()
         {
             accumulatedError = 0;   // Reset accumulated error
             motorTargetSpeed = maxDeltaAngle;
+            
             // if(payloadLatched == true)   
             //     state = SPIN_UP;
             // else
@@ -94,12 +100,18 @@ void Controller::Loop()
         // }
 
         MotorSpeedController();
-        if(rotationalSpeed >= maxDeltaAngle)
+        // if(rotationalSpeed >= maxDeltaAngle)
+        // {
+        //     Serial4.print(_cmd_cmd);
+        //     Serial4.print('\t');
+        //     Serial4.println(_cmd_ready);// Let computer know that spinup is completed.
+        //     state = READY;
+        // }
+        if(cmd == _cmd_release)
         {
-            Serial4.print(_cmd_cmd);
-            Serial4.print('\t');
-            Serial4.println(_cmd_ready);// Let computer know that spinup is completed.
-            state = READY;
+            //accumulatedError = 0;   // Reset accumulated error
+            //motorTargetSpeed = maxDeltaAngle;
+            state = LAUNCH;
         }
 
         break;
@@ -109,11 +121,11 @@ void Controller::Loop()
         MotorSpeedController();
 
         // check is speed is not within specs.
-        if(deltaAngle < (maxDeltaAngle - launchSpeedTolerance))
-        {
-            Serial4.write(_cmd_not_ready);// Let computer know that launch is no longer available
-            state = READY;
-        }
+        // if(deltaAngle < (maxDeltaAngle - launchSpeedTolerance))
+        // {
+        //     Serial4.write(_cmd_not_ready);// Let computer know that launch is no longer available
+        //     state = READY;
+        // }
 
         // if computer sends release command move to next stage
         if(cmd == _cmd_release)
@@ -124,12 +136,12 @@ void Controller::Loop()
         break;
     case LAUNCH:    
         MotorSpeedController();
-        if(abs(quadAngle - launchAngle) < launchAngleTolerance)
+        if(abs((quadAngle%PULSE_PER_ROTATION) - launchAngle) < launchAngleTolerance)
         {
             ActuateLatch(0);
             released1 = true;
         }
-        if(released1 && (quadAngle - launchAngle + (PULSE_PER_ROTATION/2)) < launchAngleTolerance)
+        if(released1 && abs((quadAngle%PULSE_PER_ROTATION) - (launchAngle + (PULSE_PER_ROTATION/2))) < launchAngleTolerance)
         {
             ActuateLatch(1);
             state = SPIN_DOWN;
@@ -183,7 +195,10 @@ void Controller::MotorSpeedController()
 
     // // write pwm.    
     // analogWrite(MOTOR_CTRL, P);
-    digitalWrite(MOTOR_CTRL, HIGH);
+    if(deltaAngle > motorTargetSpeed || motorTargetSpeed == 0)
+        digitalWrite(MOTOR_CTRL, LOW);
+    else
+        digitalWrite(MOTOR_CTRL, HIGH);
 }
 void Controller::ActuateLatch(int latchNum)
 {

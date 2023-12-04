@@ -51,9 +51,9 @@ class Controller
 private:
 
     // these values are arbitrary for now
-    const int launchAngle = 135;
-    const int launchAngleTolerance = 5;
-    const int maxDeltaAngle = 3600;
+    const int launchAngle = 450;
+    const int launchAngleTolerance = 20;
+    const int maxDeltaAngle = 3000;
     const int launchSpeedTolerance = 20;
     const int idleSpeedTolerance = 5;
     const int accelerationFactor = 1;
